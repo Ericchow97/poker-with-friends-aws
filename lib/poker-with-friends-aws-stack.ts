@@ -1,16 +1,12 @@
-import * as cdk from 'aws-cdk-lib';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+// import { HelloWorld } from './websocket-helpers/lambda/hello';
+import { PWFApi } from './websocket-helpers/api-gateway/PWFApi';
 
-export class PokerWithFriendsAwsStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+export class PokerWithFriendsAwsStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
-
-    // The code that defines your stack goes here
-
-    // example resource
-    // const queue = new sqs.Queue(this, 'PokerWithFriendsAwsQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    // new HelloWorld(this, 'hello-world');
+    new PWFApi(this, 'PWFApi')
   }
 }
