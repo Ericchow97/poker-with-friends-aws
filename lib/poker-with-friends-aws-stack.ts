@@ -39,10 +39,29 @@ export class PokerWithFriendsAwsStack extends Stack {
     // create API Gateway
     new PWFApi(this, 'PWFApi', {
       table,
-      connectFn,
-      disconnectFn,
-      defaultFn,
-      handlePWFRoom
+      lambdaFns: [
+        {
+          func: connectFn,
+          operationName: 'Connect',
+          routeKey: '$connect'
+        },
+        {
+          func: disconnectFn,
+          operationName: 'Disconnect',
+          routeKey: '$disconnect'
+        },
+        {
+          func: defaultFn,
+          operationName: 'Default',
+          routeKey: '$default'
+        },
+        {
+          func: handlePWFRoom,
+          operationName: 'handlePWFRoom',
+          routeKey: 'CreateJoinRoom'
+        },
+      ],
+      dbAccessLambdaFns:[handlePWFRoom]
     })
   }
 }

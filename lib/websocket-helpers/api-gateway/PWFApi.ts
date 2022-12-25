@@ -6,10 +6,12 @@ import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
 
 interface PWFApiProps {
   table: Table
-  connectFn: IFunction
-  disconnectFn: IFunction
-  defaultFn: IFunction
-  handlePWFRoom: IFunction
+  lambdaFns: {
+    func: IFunction
+    operationName: string
+    routeKey: string
+  }[]
+  dbAccessLambdaFns: IFunction[]
 }
 
 export class PWFApi extends Construct {
@@ -41,14 +43,12 @@ export class PWFApi extends Construct {
       deploymentId: this.websocketDeployment.ref
     })
 
-    // allow handlePWFRoom to write to PWFTable
-    props.table.grantWriteData(props.handlePWFRoom)
+    // allow dbAccessLambdaFns to write to PWFTable
+    props.dbAccessLambdaFns.forEach(fn => props.table.grantWriteData(fn))
 
     // create lambda integrations
-    this.addLambdaIntegration(props.connectFn, 'Connect', '$connect')
-    this.addLambdaIntegration(props.disconnectFn, 'Disconnect', '$disconnect')
-    this.addLambdaIntegration(props.defaultFn, 'Default', '$default')
-    this.addLambdaIntegration(props.handlePWFRoom, 'handlePWFRoom', 'CreateJoinRoom')
+    props.lambdaFns.forEach(lambdaFn => this.addLambdaIntegration(
+      lambdaFn.func, lambdaFn.operationName, lambdaFn.routeKey))
   }
 
   addLambdaIntegration(fn: IFunction, operationName: string, routeKey: string) {
