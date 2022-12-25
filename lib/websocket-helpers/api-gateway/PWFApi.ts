@@ -1,11 +1,15 @@
 import { Construct } from 'constructs';
 import { IFunction } from "aws-cdk-lib/aws-lambda";
+import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { aws_apigatewayv2 as apigateway, Aws } from 'aws-cdk-lib';
 import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
 
 interface PWFApiProps {
+  table: Table
   connectFn: IFunction
   disconnectFn: IFunction
+  defaultFn: IFunction
+  handlePWFRoom: IFunction
 }
 
 export class PWFApi extends Construct {
@@ -37,9 +41,14 @@ export class PWFApi extends Construct {
       deploymentId: this.websocketDeployment.ref
     })
 
+    // allow handlePWFRoom to write to PWFTable
+    props.table.grantWriteData(props.handlePWFRoom)
+
     // create lambda integrations
     this.addLambdaIntegration(props.connectFn, 'Connect', '$connect')
     this.addLambdaIntegration(props.disconnectFn, 'Disconnect', '$disconnect')
+    this.addLambdaIntegration(props.defaultFn, 'Default', '$default')
+    this.addLambdaIntegration(props.handlePWFRoom, 'handlePWFRoom', 'CreateJoinRoom')
   }
 
   addLambdaIntegration(fn: IFunction, operationName: string, routeKey: string) {
