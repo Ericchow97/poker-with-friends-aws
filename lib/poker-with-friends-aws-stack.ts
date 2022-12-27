@@ -1,5 +1,5 @@
 import { Stack, StackProps, Aws } from 'aws-cdk-lib';
-import { Construct, Node } from 'constructs';
+import { Construct } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement, Effect } from "aws-cdk-lib/aws-iam";
@@ -10,6 +10,7 @@ import { PWFApi } from './websocket-helpers/api-gateway/PWFApi';
 export class PokerWithFriendsAwsStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
+    
 
     // create connections table
     const connectionsTable = new Table(this, 'ConnectionsTable', {
@@ -23,6 +24,7 @@ export class PokerWithFriendsAwsStack extends Stack {
 
     // create API Gateway
     const websocketApiGateway = new PWFApi(this, 'PWFApi')
+    const connectionUrl = `https://${websocketApiGateway.websocketApi.ref}.execute-api.${Aws.REGION}.amazonaws.com/prod`
 
     // create lambda functions
     const connectFn = new NodejsFunction(this, 'connectFn', {
@@ -37,7 +39,7 @@ export class PokerWithFriendsAwsStack extends Stack {
       environment: {
         CONNECTIONS_TABLE: connectionsTable.tableName,
         PWF_GAME_TABLE_NAME: gameRoomTable.tableName,
-        CONNECTION_URL: `https://${websocketApiGateway.websocketApi.ref}.execute-api.${Aws.REGION}.amazonaws.com/prod`
+        CONNECTION_URL: connectionUrl
       }
     })
 
@@ -50,7 +52,7 @@ export class PokerWithFriendsAwsStack extends Stack {
       environment: {
         CONNECTIONS_TABLE: connectionsTable.tableName,
         PWF_GAME_TABLE_NAME: gameRoomTable.tableName,
-        CONNECTION_URL: `https://${websocketApiGateway.websocketApi.ref}.execute-api.${Aws.REGION}.amazonaws.com/prod`
+        CONNECTION_URL: connectionUrl
       }
     })
 
@@ -82,6 +84,5 @@ export class PokerWithFriendsAwsStack extends Stack {
     connectionsTable.grantWriteData(handlePWFRoom)
     gameRoomTable.grantWriteData(handlePWFRoom)
     gameRoomTable.grantReadWriteData(disconnectFn)
-
   }
 }

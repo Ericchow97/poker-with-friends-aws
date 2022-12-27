@@ -2,8 +2,13 @@ import { APIGatewayEvent } from 'aws-lambda';
 import { dbClient } from '../../class-helpers/dbClient';
 import { GetCommand, DeleteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { RecordConnections } from '../../../types';
-import { apiGatewayClient } from '../../class-helpers/apiGatewayClient';
+import { ApiGatewayClient } from '../../class-helpers/ApiGatewayClient';
 import { PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
+
+const apiGatewayClient = new ApiGatewayClient(
+  process.env.AWS_REGION!,
+  process.env.CONNECTION_URL!
+)
 
 export const handler = async (event: APIGatewayEvent) => {
   try {
@@ -80,15 +85,10 @@ export const handler = async (event: APIGatewayEvent) => {
 
       // pass back information to existing users about who left
       const connections = (Attributes as RecordConnections).Connections
-      for (const connection of connections) {
-        const command = new PostToConnectionCommand({
-          ConnectionId: connection.connectionId,
-          Data: Buffer.from(JSON.stringify({
-            removedPlayer: activeConnections[connectionIndex].name
-          }))
-        })
-        await apiGatewayClient.send(command)
-      }
+
+      await apiGatewayClient.postToConnections(connections, {
+        removedPlayer: activeConnections[connectionIndex].name
+      })
     }
 
     // delete user from connections table

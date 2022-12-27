@@ -3,8 +3,7 @@ import { nanoid } from 'nanoid'
 import { dbClient } from '../../class-helpers/dbClient';
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { apiGatewayClient } from '../../class-helpers/apiGatewayClient';
-import { PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
+import { ApiGatewayClient } from '../../class-helpers/ApiGatewayClient';
 import { RecordConnections, ConnectionData } from '../../../types';
 
 interface PWFCreateJoinData {
@@ -14,6 +13,11 @@ interface PWFCreateJoinData {
     type: "Create" | "Join"
   }
 }
+
+const apiGatewayClient = new ApiGatewayClient(
+  process.env.AWS_REGION!,
+  process.env.CONNECTION_URL!
+)
 
 export const handler = async (event: APIGatewayEvent) => {
   try {
@@ -63,15 +67,10 @@ export const handler = async (event: APIGatewayEvent) => {
 
       // pass back information to existing users about who joined
       const connections = (Attributes as RecordConnections).Connections
-      for (const connection of connections) {
-        const command = new PostToConnectionCommand({
-          ConnectionId: connection.connectionId,
-          Data: Buffer.from(JSON.stringify({
-            newPlayer: data.name
-          }))
-        })
-        await apiGatewayClient.send(command)
-      }
+      await apiGatewayClient.postToConnections(connections, {
+        newPlayer: data.name
+      })
+      
     } else {
       //TODO: error handling
       //throw an error since invalid query type
