@@ -16,7 +16,8 @@ interface PWFApiProps {
 
 export class PWFApi extends Construct {
   readonly websocketApi: apigateway.CfnApi;
-  readonly websocketDeployment: apigateway.CfnDeployment
+  readonly websocketDeployment: apigateway.CfnDeployment;
+  readonly table: Table
 
   constructor(scope: Construct, id: string, props: PWFApiProps) {
     super(scope, id)
@@ -43,8 +44,10 @@ export class PWFApi extends Construct {
       deploymentId: this.websocketDeployment.ref
     })
 
+    this.table = props.table
+
     // allow dbAccessLambdaFns to write to PWFTable
-    props.dbAccessLambdaFns.forEach(fn => props.table.grantWriteData(fn))
+    props.dbAccessLambdaFns.forEach(fn => this.table.grantWriteData(fn))
 
     // create lambda integrations
     props.lambdaFns.forEach(lambdaFn => this.addLambdaIntegration(
@@ -80,4 +83,6 @@ export class PWFApi extends Construct {
     // ensure lambda functions are created before integration & deployment
     this.websocketDeployment.addDependsOn(route)
   }
+
+  addDBWriteAccess(fn: IFunction) { this.table.grantWriteData(fn) }
 }

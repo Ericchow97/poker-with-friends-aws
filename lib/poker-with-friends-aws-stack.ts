@@ -1,7 +1,8 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { Stack, StackProps, Aws } from 'aws-cdk-lib';
 import { Construct, Node } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
+import { PolicyStatement, Effect } from "aws-cdk-lib/aws-iam";
 import * as path from 'path';
 
 import { PWFApi } from './websocket-helpers/api-gateway/PWFApi';
@@ -16,7 +17,7 @@ export class PokerWithFriendsAwsStack extends Stack {
     });
 
     //TODO: Update connect & disconnect functions
-    // create lambda functions
+    // create base lambda functions
     const connectFn = new NodejsFunction(this, 'connectFn', {
       entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'connect.ts')
     })
@@ -29,15 +30,8 @@ export class PokerWithFriendsAwsStack extends Stack {
       entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'default.ts')
     })
 
-    const handlePWFRoom = new NodejsFunction(this, "handlePWFRoom", {
-      entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'handlePWFRoom.ts'),
-      environment: {
-        PWF_TABLE_NAME: table.tableName,
-      }
-    })
-
     // create API Gateway
-    new PWFApi(this, 'PWFApi', {
+    const websocketApiGateway = new PWFApi(this, 'PWFApi', {
       table,
       lambdaFns: [
         {
@@ -55,13 +49,29 @@ export class PokerWithFriendsAwsStack extends Stack {
           operationName: 'Default',
           routeKey: '$default'
         },
-        {
-          func: handlePWFRoom,
-          operationName: 'handlePWFRoom',
-          routeKey: 'CreateJoinRoom'
-        },
+
       ],
-      dbAccessLambdaFns:[handlePWFRoom]
+      dbAccessLambdaFns: []
     })
+
+    // Create custom lambda functions
+    const handlePWFRoom = new NodejsFunction(this, "handlePWFRoom", {
+      entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'handlePWFRoom.ts'),
+      environment: {
+        PWF_TABLE_NAME: table.tableName,
+        CONNECTION_URL: `https://${websocketApiGateway.websocketApi.ref}.execute-api.${Aws.REGION}.amazonaws.com/prod`
+      }
+    })
+
+    // allow lambda access and db write access
+    websocketApiGateway.addLambdaIntegration(handlePWFRoom, 'handlePWFRoom', 'CreateJoinRoom')
+    websocketApiGateway.addDBWriteAccess(handlePWFRoom)
+
+    // set permission to send data back to connections 
+    handlePWFRoom.addToRolePolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: [ "execute-api:ManageConnections" ],
+      resources: [ `arn:aws:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${websocketApiGateway.websocketApi.ref}/*` ]
+    }));
   }
 }
