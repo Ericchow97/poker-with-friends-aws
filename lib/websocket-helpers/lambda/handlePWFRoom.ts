@@ -4,6 +4,7 @@ import { dbClient } from '../../class-helpers/dbClient';
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
+import { RecordConnections, ConnectionData } from '../../../types';
 
 const apiGatewayClient = new ApiGatewayManagementApiClient({
   region: process.env.AWS_REGION,
@@ -18,14 +19,7 @@ interface PWFCreateJoinData {
   }
 }
 
-interface RecordActiveUsers {
-  Connections: ConnectionData[]
-}
 
-interface ConnectionData {
-  name: string,
-  connectionId: string
-}
 
 export const handler = async (event: APIGatewayEvent) => {
   try {
@@ -74,7 +68,7 @@ export const handler = async (event: APIGatewayEvent) => {
       if (!Attributes) return
 
       // pass back information to existing users about who joined
-      const connections = (Attributes as RecordActiveUsers).Connections
+      const connections = (Attributes as RecordConnections).Connections
       for (const connection of connections) {
         const command = new PostToConnectionCommand({
           ConnectionId: connection.connectionId,

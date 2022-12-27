@@ -68,7 +68,11 @@ export class PokerWithFriendsAwsStack extends Stack {
       resources: [`arn:aws:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${websocketApiGateway.websocketApi.ref}/*`]
     }));
 
-
+    disconnectFn.addToRolePolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ["execute-api:ManageConnections"],
+      resources: [`arn:aws:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${websocketApiGateway.websocketApi.ref}/*`]
+    }));
 
 
     // grant DB Access
