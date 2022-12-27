@@ -16,13 +16,15 @@ export class PokerWithFriendsAwsStack extends Stack {
       partitionKey: { name: 'ConnectionId', type: AttributeType.STRING }
     })
 
-    // create PWF Game database
+    // create PWF Game Room Table
     const gameRoomTable = new Table(this, 'PWFGameRooms', {
       partitionKey: { name: 'RoomId', type: AttributeType.STRING }
     });
 
-    //TODO: Update connect & disconnect functions
-    // create base lambda functions
+    // create API Gateway
+    const websocketApiGateway = new PWFApi(this, 'PWFApi')
+
+    // create lambda functions
     const connectFn = new NodejsFunction(this, 'connectFn', {
       entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'connect.ts'),
       environment: {
@@ -31,48 +33,32 @@ export class PokerWithFriendsAwsStack extends Stack {
     })
 
     const disconnectFn = new NodejsFunction(this, 'disconnectFn', {
-      entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'disconnect.ts')
+      entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'disconnect.ts'),
+      environment: {
+        CONNECTIONS_TABLE: connectionsTable.tableName,
+        PWF_GAME_TABLE_NAME: gameRoomTable.tableName,
+        CONNECTION_URL: `https://${websocketApiGateway.websocketApi.ref}.execute-api.${Aws.REGION}.amazonaws.com/prod`
+      }
     })
 
     const defaultFn = new NodejsFunction(this, 'defaultFn', {
       entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'default.ts')
     })
 
-    // create API Gateway
-    const websocketApiGateway = new PWFApi(this, 'PWFApi', {
-      table: gameRoomTable,
-      lambdaFns: [
-        {
-          func: connectFn,
-          operationName: 'Connect',
-          routeKey: '$connect'
-        },
-        {
-          func: disconnectFn,
-          operationName: 'Disconnect',
-          routeKey: '$disconnect'
-        },
-        {
-          func: defaultFn,
-          operationName: 'Default',
-          routeKey: '$default'
-        },
-
-      ],
-      dbAccessLambdaFns: []
-    })
-
-    // Create custom lambda functions
     const handlePWFRoom = new NodejsFunction(this, "handlePWFRoom", {
       entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'handlePWFRoom.ts'),
       environment: {
         CONNECTIONS_TABLE: connectionsTable.tableName,
-        PWF_TABLE_NAME: gameRoomTable.tableName,
+        PWF_GAME_TABLE_NAME: gameRoomTable.tableName,
         CONNECTION_URL: `https://${websocketApiGateway.websocketApi.ref}.execute-api.${Aws.REGION}.amazonaws.com/prod`
       }
     })
 
-    // allow lambda access and db write access
+    // allow API Gateway to call lambda functions
+    websocketApiGateway.addLambdaIntegration(connectFn, 'Connect', '$connect')
+    websocketApiGateway.addLambdaIntegration(disconnectFn, 'Disconnect', '$disconnect')
+    websocketApiGateway.addLambdaIntegration(defaultFn, 'Default', '$default')
+
     websocketApiGateway.addLambdaIntegration(handlePWFRoom, 'handlePWFRoom', 'CreateJoinRoom')
 
     // set permission to send data back to connections 
@@ -87,9 +73,11 @@ export class PokerWithFriendsAwsStack extends Stack {
 
     // grant DB Access
     connectionsTable.grantWriteData(connectFn)
-    connectionsTable.grantReadData(disconnectFn)
+    connectionsTable.grantReadWriteData(disconnectFn)
 
     connectionsTable.grantWriteData(handlePWFRoom)
     gameRoomTable.grantWriteData(handlePWFRoom)
+    gameRoomTable.grantReadWriteData(disconnectFn)
+
   }
 }

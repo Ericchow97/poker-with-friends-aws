@@ -4,22 +4,12 @@ import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { aws_apigatewayv2 as apigateway, Aws } from 'aws-cdk-lib';
 import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
 
-interface PWFApiProps {
-  table: Table
-  lambdaFns: {
-    func: IFunction
-    operationName: string
-    routeKey: string,
-  }[]
-  dbAccessLambdaFns: IFunction[]
-}
-
 export class PWFApi extends Construct {
   readonly websocketApi: apigateway.CfnApi;
   readonly websocketDeployment: apigateway.CfnDeployment;
   readonly table: Table
 
-  constructor(scope: Construct, id: string, props: PWFApiProps) {
+  constructor(scope: Construct, id: string) {
     super(scope, id)
 
     // create websocket API
@@ -43,13 +33,9 @@ export class PWFApi extends Construct {
       stageName: 'prod',
       deploymentId: this.websocketDeployment.ref
     })
-
-    props.lambdaFns.forEach(lambdaFn => {
-      // create lambda integrations (Allows functions to be called)
-      this.addLambdaIntegration(lambdaFn.func, lambdaFn.operationName, lambdaFn.routeKey)
-    })
   }
 
+  // Create endpoint and allows lambda functions to be called by websocket
   addLambdaIntegration(fn: IFunction, operationName: string, routeKey: string) {
     // integrate routes to endpoints
     const integration = new apigateway.CfnIntegration(this, `PWF${operationName}Integration`, {

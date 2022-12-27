@@ -47,7 +47,7 @@ export const handler = async (event: APIGatewayEvent) => {
       //TODO: See if you can pass in a TTL with refresh per entry
       await dbClient.send(
         new PutCommand({
-          TableName: process.env.PWF_TABLE_NAME,
+          TableName: process.env.PWF_GAME_TABLE_NAME,
           Item: {
             RoomId: roomId,
             Connections: [connectionData]
@@ -58,7 +58,7 @@ export const handler = async (event: APIGatewayEvent) => {
       // update room Connections with new player iff table exists
       const { Attributes } = await dbClient.send(
         new UpdateCommand({
-          TableName: process.env.PWF_TABLE_NAME,
+          TableName: process.env.PWF_GAME_TABLE_NAME,
           Key: {
             RoomId: roomId
           },
