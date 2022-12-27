@@ -2,14 +2,8 @@ import { APIGatewayEvent } from 'aws-lambda';
 import { dbClient } from '../../class-helpers/dbClient';
 import { GetCommand, DeleteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { RecordConnections } from '../../../types';
-
-import { ApiGatewayManagementApiClient, PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
-
-const apiGatewayClient = new ApiGatewayManagementApiClient({
-  region: process.env.AWS_REGION,
-  endpoint: process.env.CONNECTION_URL,
-});
-
+import { apiGatewayClient } from '../../class-helpers/apiGatewayClient';
+import { PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
 
 export const handler = async (event: APIGatewayEvent) => {
   try {

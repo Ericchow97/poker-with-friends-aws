@@ -3,13 +3,9 @@ import { nanoid } from 'nanoid'
 import { dbClient } from '../../class-helpers/dbClient';
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { ApiGatewayManagementApiClient, PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
+import { apiGatewayClient } from '../../class-helpers/apiGatewayClient';
+import { PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
 import { RecordConnections, ConnectionData } from '../../../types';
-
-const apiGatewayClient = new ApiGatewayManagementApiClient({
-  region: process.env.AWS_REGION,
-  endpoint: process.env.CONNECTION_URL,
-});
 
 interface PWFCreateJoinData {
   data: {
@@ -18,8 +14,6 @@ interface PWFCreateJoinData {
     type: "Create" | "Join"
   }
 }
-
-
 
 export const handler = async (event: APIGatewayEvent) => {
   try {
