@@ -31,7 +31,7 @@ export const handler = async (event: APIGatewayEvent) => {
   try {
     const { data } = JSON.parse(event.body || '') as PWFCreateJoinData
 
-    // create playerID/ConnectiondID (ConnectionId to send back data)
+    // create playerID/ConnectionID (ConnectionId to send back data)
     const connectionId = event.requestContext.connectionId as string
 
     const connectionData: ConnectionData = {
@@ -39,9 +39,10 @@ export const handler = async (event: APIGatewayEvent) => {
       connectionId: connectionId
     }
 
+    let roomId = data.roomId
     if (data.type === 'Create') {
       // create room & create new entry in DB 
-      const roomId = nanoid(10)
+      roomId = nanoid(10)
 
       //TODO: See if you can pass in a TTL with refresh per entry
       await dbClient.send(
@@ -54,18 +55,18 @@ export const handler = async (event: APIGatewayEvent) => {
         })
       )
     } else if (data.type === 'Join') {
-      // update room ActiveUsers with new player iff table exists
+      // update room Connections with new player iff table exists
       const { Attributes } = await dbClient.send(
         new UpdateCommand({
           TableName: process.env.PWF_TABLE_NAME,
           Key: {
-            RoomId: data.roomId
+            RoomId: roomId
           },
           UpdateExpression: "SET Connections = list_append(Connections, :p)",
           ConditionExpression: "RoomId = :roomId",
           ExpressionAttributeValues: {
             ":p": [connectionData],
-            ":roomId": data.roomId
+            ":roomId": roomId
           },
           ReturnValues: "UPDATED_OLD"
         })
@@ -84,14 +85,33 @@ export const handler = async (event: APIGatewayEvent) => {
         await apiGatewayClient.send(command)
       }
     } else {
+      //TODO: error handling
       //throw an error since invalid query type
     }
 
-    // return success, player ID and roomID
+    // update connections table with roomId
+    await dbClient.send(
+      new UpdateCommand({
+        TableName: process.env.CONNECTIONS_TABLE,
+        Key: {
+          ConnectionId: connectionId
+        },
+        UpdateExpression: "SET RoomId = :roomId",
+        ExpressionAttributeValues: {
+          ":roomId": roomId
+        }
+      })
+    )
+
+    // return success, connectionId and roomId
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: 'created Room',
+        data: {
+          connectionId,
+          roomId
+        }
       }),
     };
   } catch (e) {
@@ -104,7 +124,7 @@ export const handler = async (event: APIGatewayEvent) => {
         statusCode: 400,
         body: JSON.stringify({
           code: 'invalidRoom',
-          message: 'Invalid Room Code Provided',
+          message: 'Invalid room code provided',
         }),
       };
     }
@@ -113,7 +133,7 @@ export const handler = async (event: APIGatewayEvent) => {
     return {
       statusCode: 400,
       body: JSON.stringify({
-        message: 'error Room',
+        message: 'Error in creating room',
       }),
     };
   }

@@ -66,6 +66,7 @@ export class PokerWithFriendsAwsStack extends Stack {
     const handlePWFRoom = new NodejsFunction(this, "handlePWFRoom", {
       entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'handlePWFRoom.ts'),
       environment: {
+        CONNECTIONS_TABLE: connectionsTable.tableName,
         PWF_TABLE_NAME: gameRoomTable.tableName,
         CONNECTION_URL: `https://${websocketApiGateway.websocketApi.ref}.execute-api.${Aws.REGION}.amazonaws.com/prod`
       }
@@ -88,8 +89,7 @@ export class PokerWithFriendsAwsStack extends Stack {
     connectionsTable.grantWriteData(connectFn)
     connectionsTable.grantReadData(disconnectFn)
 
-    connectionsTable.grantReadData(handlePWFRoom)
+    connectionsTable.grantWriteData(handlePWFRoom)
     gameRoomTable.grantWriteData(handlePWFRoom)
-
   }
 }
