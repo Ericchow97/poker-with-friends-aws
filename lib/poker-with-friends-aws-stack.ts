@@ -11,15 +11,23 @@ export class PokerWithFriendsAwsStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
+    // create connections table
+    const connectionsTable = new Table(this, 'ConnectionsTable', {
+      partitionKey: { name: 'ConnectionId', type: AttributeType.STRING }
+    })
+
     // create PWF Game database
-    const table = new Table(this, 'PWFGameRooms', {
+    const gameRoomTable = new Table(this, 'PWFGameRooms', {
       partitionKey: { name: 'RoomId', type: AttributeType.STRING }
     });
 
     //TODO: Update connect & disconnect functions
     // create base lambda functions
     const connectFn = new NodejsFunction(this, 'connectFn', {
-      entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'connect.ts')
+      entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'connect.ts'),
+      environment: {
+        CONNECTIONS_TABLE: connectionsTable.tableName
+      }
     })
 
     const disconnectFn = new NodejsFunction(this, 'disconnectFn', {
@@ -32,7 +40,7 @@ export class PokerWithFriendsAwsStack extends Stack {
 
     // create API Gateway
     const websocketApiGateway = new PWFApi(this, 'PWFApi', {
-      table,
+      table: gameRoomTable,
       lambdaFns: [
         {
           func: connectFn,
@@ -58,20 +66,30 @@ export class PokerWithFriendsAwsStack extends Stack {
     const handlePWFRoom = new NodejsFunction(this, "handlePWFRoom", {
       entry: path.resolve(__dirname, "websocket-helpers", "lambda", 'handlePWFRoom.ts'),
       environment: {
-        PWF_TABLE_NAME: table.tableName,
+        PWF_TABLE_NAME: gameRoomTable.tableName,
         CONNECTION_URL: `https://${websocketApiGateway.websocketApi.ref}.execute-api.${Aws.REGION}.amazonaws.com/prod`
       }
     })
 
     // allow lambda access and db write access
     websocketApiGateway.addLambdaIntegration(handlePWFRoom, 'handlePWFRoom', 'CreateJoinRoom')
-    websocketApiGateway.addDBWriteAccess(handlePWFRoom)
 
     // set permission to send data back to connections 
     handlePWFRoom.addToRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
-      actions: [ "execute-api:ManageConnections" ],
-      resources: [ `arn:aws:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${websocketApiGateway.websocketApi.ref}/*` ]
+      actions: ["execute-api:ManageConnections"],
+      resources: [`arn:aws:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${websocketApiGateway.websocketApi.ref}/*`]
     }));
+
+
+
+
+    // grant DB Access
+    connectionsTable.grantWriteData(connectFn)
+    connectionsTable.grantReadData(disconnectFn)
+
+    connectionsTable.grantReadData(handlePWFRoom)
+    gameRoomTable.grantWriteData(handlePWFRoom)
+
   }
 }

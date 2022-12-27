@@ -1,12 +1,9 @@
 import { APIGatewayEvent } from 'aws-lambda';
 import { nanoid } from 'nanoid'
-import { DynamoDBClient, ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { dbClient } from '../../class-helpers/dbClient';
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
+import { PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
-
-// dbClient
-const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION });
-const dbClient = DynamoDBDocumentClient.from(ddbClient);
 
 const apiGatewayClient = new ApiGatewayManagementApiClient({
   region: process.env.AWS_REGION,

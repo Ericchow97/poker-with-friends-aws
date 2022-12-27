@@ -9,7 +9,7 @@ interface PWFApiProps {
   lambdaFns: {
     func: IFunction
     operationName: string
-    routeKey: string
+    routeKey: string,
   }[]
   dbAccessLambdaFns: IFunction[]
 }
@@ -44,14 +44,10 @@ export class PWFApi extends Construct {
       deploymentId: this.websocketDeployment.ref
     })
 
-    this.table = props.table
-
-    // allow dbAccessLambdaFns to write to PWFTable
-    props.dbAccessLambdaFns.forEach(fn => this.table.grantWriteData(fn))
-
-    // create lambda integrations
-    props.lambdaFns.forEach(lambdaFn => this.addLambdaIntegration(
-      lambdaFn.func, lambdaFn.operationName, lambdaFn.routeKey))
+    props.lambdaFns.forEach(lambdaFn => {
+      // create lambda integrations (Allows functions to be called)
+      this.addLambdaIntegration(lambdaFn.func, lambdaFn.operationName, lambdaFn.routeKey)
+    })
   }
 
   addLambdaIntegration(fn: IFunction, operationName: string, routeKey: string) {
@@ -83,6 +79,4 @@ export class PWFApi extends Construct {
     // ensure lambda functions are created before integration & deployment
     this.websocketDeployment.addDependsOn(route)
   }
-
-  addDBWriteAccess(fn: IFunction) { this.table.grantWriteData(fn) }
 }
