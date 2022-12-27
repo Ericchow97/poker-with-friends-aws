@@ -20,18 +20,18 @@ const apiGatewayClient = new ApiGatewayClient(
 )
 
 export const handler = async (event: APIGatewayEvent) => {
+  const { data } = JSON.parse(event.body || '') as PWFCreateJoinData
+
+  // create playerID/ConnectionID (ConnectionId to send back data)
+  const connectionId = event.requestContext.connectionId as string
+
+  const connectionData: ConnectionData = {
+    name: data.name,
+    connectionId: connectionId
+  }
+
+  let roomId = data.roomId
   try {
-    const { data } = JSON.parse(event.body || '') as PWFCreateJoinData
-
-    // create playerID/ConnectionID (ConnectionId to send back data)
-    const connectionId = event.requestContext.connectionId as string
-
-    const connectionData: ConnectionData = {
-      name: data.name,
-      connectionId: connectionId
-    }
-
-    let roomId = data.roomId
     if (data.type === 'Create') {
       // create room & create new entry in DB 
       roomId = nanoid(10)
@@ -70,7 +70,7 @@ export const handler = async (event: APIGatewayEvent) => {
       await apiGatewayClient.postToConnections(connections, {
         newPlayer: data.name
       })
-      
+
     } else {
       //TODO: error handling
       //throw an error since invalid query type
@@ -90,17 +90,12 @@ export const handler = async (event: APIGatewayEvent) => {
       })
     )
 
-    // return success, connectionId and roomId
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'created Room',
-        data: {
-          connectionId,
-          roomId
-        }
-      }),
-    };
+    // pass back information to sender about roomId and playerId
+    await apiGatewayClient.postToConnections([connectionData], {
+      connectionId,
+      roomId
+    })
+
   } catch (e) {
     console.log(e)
 

@@ -26,6 +26,4 @@ export class ApiGatewayClient {
     })
     await Promise.all(allRequests)
   }
-
-
 }
