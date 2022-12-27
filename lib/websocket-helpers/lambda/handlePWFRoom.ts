@@ -2,7 +2,7 @@ import { APIGatewayEvent } from 'aws-lambda';
 import { nanoid } from 'nanoid'
 import { dbClient } from '../../class-helpers/dbClient';
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
-import { PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, UpdateCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { ApiGatewayClient } from '../../class-helpers/ApiGatewayClient';
 import { RecordConnections, ConnectionData } from '../../../types';
 
@@ -92,22 +92,44 @@ export const handler = async (event: APIGatewayEvent) => {
 
     // pass back information to sender about roomId and playerId
     await apiGatewayClient.postToConnections([connectionData], {
-      connectionId,
-      roomId
+      status: 200,
+      code: `${data.type}Room`,
+      data: {
+        connectionId,
+        roomId
+      }
     })
+
+    return {
+      statusCode: 200
+    }
 
   } catch (e) {
     console.log(e)
 
     // invalid room code error
     if (e instanceof ConditionalCheckFailedException) {
-      console.log('this is a test')
+      // send error message back to client
+      await apiGatewayClient.postToConnections([connectionData], {
+        status: 400,
+        code: 'invalidRoom',
+        data: {
+          message: 'Invalid room code provided'
+        },
+      })
+
+      // remove connection from DB
+      await dbClient.send(
+        new DeleteCommand({
+          TableName: process.env.CONNECTIONS_TABLE,
+          Key: {
+            ConnectionId: connectionId
+          },
+        })
+      )
+      
       return {
         statusCode: 400,
-        body: JSON.stringify({
-          code: 'invalidRoom',
-          message: 'Invalid room code provided',
-        }),
       };
     }
 
@@ -119,6 +141,4 @@ export const handler = async (event: APIGatewayEvent) => {
       }),
     };
   }
-
-
 };
