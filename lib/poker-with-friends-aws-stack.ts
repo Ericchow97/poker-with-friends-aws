@@ -11,13 +11,14 @@ export class PokerWithFriendsAwsStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
     
-
     // create connections table
+    // Connections table allows sending messages back to the connected users
     const connectionsTable = new Table(this, 'ConnectionsTable', {
       partitionKey: { name: 'ConnectionId', type: AttributeType.STRING }
     })
 
     // create PWF Game Room Table
+    // PWF Game Room Table stores all active game rooms 
     const gameRoomTable = new Table(this, 'PWFGameRooms', {
       partitionKey: { name: 'RoomId', type: AttributeType.STRING }
     });
@@ -84,5 +85,7 @@ export class PokerWithFriendsAwsStack extends Stack {
     connectionsTable.grantWriteData(handlePWFRoom)
     gameRoomTable.grantWriteData(handlePWFRoom)
     gameRoomTable.grantReadWriteData(disconnectFn)
+
+    //TODO: set up reconnect endpoint if someone were to refresh their browser
   }
 }

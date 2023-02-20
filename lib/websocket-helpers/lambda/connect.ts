@@ -4,8 +4,8 @@ import { PutCommand } from "@aws-sdk/lib-dynamodb";
 
 export const handler = async (event: APIGatewayEvent) => {
   try {
-    // write to connections table the new connection
-    const data = await dbClient.send(
+    // write new connection to connections table
+    await dbClient.send(
       new PutCommand({
         TableName: process.env.CONNECTIONS_TABLE,
         Item: {
@@ -15,8 +15,6 @@ export const handler = async (event: APIGatewayEvent) => {
       })
     )
 
-    console.log(data)
-
     return {
       statusCode: 200,
       body: JSON.stringify({
@@ -24,8 +22,6 @@ export const handler = async (event: APIGatewayEvent) => {
       }),
     }
   } catch (e) {
-    console.log(e)
-
     // general error
     return {
       statusCode: 400,

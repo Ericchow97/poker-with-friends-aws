@@ -27,7 +27,8 @@ export const handler = async (event: APIGatewayEvent) => {
 
   const connectionData: ConnectionData = {
     name: data.name,
-    connectionId: connectionId
+    connectionId: connectionId,
+    isHost: data.type === 'Create'
   }
 
   let roomId = data.roomId
@@ -95,8 +96,9 @@ export const handler = async (event: APIGatewayEvent) => {
       status: 200,
       code: `${data.type}Room`,
       data: {
+        roomId,
         connectionId,
-        roomId
+        isHost: data.type === 'Create'
       }
     })
 
@@ -127,7 +129,7 @@ export const handler = async (event: APIGatewayEvent) => {
           },
         })
       )
-      
+
       return {
         statusCode: 400,
       };

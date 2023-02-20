@@ -3,7 +3,6 @@ import { dbClient } from '../../class-helpers/dbClient';
 import { GetCommand, DeleteCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { RecordConnections } from '../../../types';
 import { ApiGatewayClient } from '../../class-helpers/ApiGatewayClient';
-import { PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
 
 const apiGatewayClient = new ApiGatewayClient(
   process.env.AWS_REGION!,
@@ -45,9 +44,10 @@ export const handler = async (event: APIGatewayEvent) => {
     if (!Item) return
     const activeConnections = (Item as RecordConnections).Connections
 
+    // TODO: Keep room open when leaving and set up a TTL on the data itself
     // delete from db if only user left in room
     if (activeConnections.length === 1) {
-      await dbClient.send(
+      dbClient.send(
         new DeleteCommand({
           TableName: process.env.PWF_GAME_TABLE_NAME,
           Key: {
@@ -92,7 +92,7 @@ export const handler = async (event: APIGatewayEvent) => {
     }
 
     // delete user from connections table
-    await dbClient.send(
+    dbClient.send(
       new DeleteCommand({
         TableName: process.env.CONNECTIONS_TABLE,
         Key: {
